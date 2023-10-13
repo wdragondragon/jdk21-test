@@ -1,5 +1,8 @@
 package org.example;
 
+import org.example.jna.Library;
+import org.example.jna.Native;
+
 import java.util.List;
 
 /**
@@ -9,7 +12,15 @@ import java.util.List;
  */
 public interface MathLibrary extends Library {
 
-    MathLibrary mathLibrary = Native.load("src\\main\\resources\\MathLibrary.dll", MathLibrary.class);
+    MathLibrary DLL = Native.load("src\\main\\resources\\MathLibrary.dll", MathLibrary.class);
+
+    Long fibonacci_init(Long a, Long b);
+
+    Boolean fibonacci_next();
+
+    Long fibonacci_current();
+
+    Long fibonacci_index();
 
     Point test_point(Point[] point, long count);
 

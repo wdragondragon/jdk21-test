@@ -1,7 +1,6 @@
-package org.example;
+package org.example.jna;
 
 import java.lang.reflect.Proxy;
-import java.util.Collections;
 
 /**
  * @author JDragon
@@ -12,7 +11,7 @@ public class Native {
 
     public static <T extends Library> T load(String libPath, Class<T> interfaceClass) {
 
-        Library.Handler handler = new Library.Handler(libPath, interfaceClass, Collections.emptyMap());
+        Library.Handler handler = new Library.Handler(libPath);
         Object proxy = Proxy.newProxyInstance(interfaceClass.getClassLoader(), new Class[]{interfaceClass}, handler);
 
         return interfaceClass.cast(proxy);

@@ -5,7 +5,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
 import java.util.*;
 
 import static java.lang.foreign.ValueLayout.*;
@@ -29,8 +28,13 @@ public class TestNative {
         for (int j = 0; j < pointArray.length; j++) {
             pointArray[j] = new Point(j, j);
         }
-        Point point = MathLibrary.mathLibrary.test_point(pointArray, pointArray.length);
+        Point point = MathLibrary.DLL.test_point(pointArray, pointArray.length);
         System.out.println(point);
+
+        Long l = MathLibrary.DLL.fibonacci_init(1L, 1L);
+        do {
+            System.out.println(MathLibrary.DLL.fibonacci_index() + ": " + MathLibrary.DLL.fibonacci_current());
+        } while (MathLibrary.DLL.fibonacci_next());
     }
 
     public static void fb() throws Throwable {
@@ -163,7 +167,6 @@ public class TestNative {
             pointsList.add(pointsArray[i]);
         }
 
-
         StructLayout pointMemoryLayout = MemoryLayout.structLayout(
                 JAVA_INT.withName("x"),
                 JAVA_INT.withName("y"));
@@ -178,8 +181,6 @@ public class TestNative {
         );
 
         SequenceLayout pointsArrayMemoryLayout = MemoryLayout.sequenceLayout(10, pointsMemoryLayout);
-
-//        SequenceLayout pointsArrayMemoryLayout = (SequenceLayout) buildMemoryLayout(pointsList);
 
         MethodHandle test_point = linker.downcallHandle(
                 symbolLookup.find("test_point_two").orElseThrow(),
@@ -218,7 +219,6 @@ public class TestNative {
                 pointArrayYVarHandler.set(segment, (long) i, (long) l, l);
             }
         }
-//        buildMemorySegment(pointsList, segment, pointsArrayMemoryLayout, pointsArrayMemoryLayout, new LinkedList<>(), new LinkedList<>());
         MemorySegment result = (MemorySegment) test_point.invoke(segment, pointsArrayMemoryLayout.elementCount());
         result = result.reinterpret(pointsArrayMemoryLayout.byteSize());
 
