@@ -25,8 +25,12 @@ public class TestNative {
     static SymbolLookup symbolLookup = SymbolLookup.libraryLookup("src\\main\\resources\\MathLibrary.dll", Arena.global());
 
     public static void main(String[] args) throws Throwable {
-        dereferenceSegmentsStructs();
-//        System.out.println(9L << 32 | 9L);
+        Point[] pointArray = new Point[10];
+        for (int j = 0; j < pointArray.length; j++) {
+            pointArray[j] = new Point(j, j);
+        }
+        Point point = MathLibrary.mathLibrary.test_point(pointArray, pointArray.length);
+        System.out.println(point);
     }
 
     public static void fb() throws Throwable {
@@ -147,14 +151,16 @@ public class TestNative {
     }
 
     public static void dereferenceSegmentsStructs() throws Throwable {
+        List<Points> pointsList = new LinkedList<>();
         Points[] pointsArray = new Points[10];
         for (int i = 0; i < pointsArray.length; i++) {
             Point point = new Point(i, i);
             Point[] pointArray = new Point[10];
             for (int j = 0; j < pointArray.length; j++) {
-                pointArray[i] = new Point(i, j);
+                pointArray[j] = new Point(i, j);
             }
             pointsArray[i] = new Points(i, i, point, pointArray);
+            pointsList.add(pointsArray[i]);
         }
 
 
@@ -173,9 +179,7 @@ public class TestNative {
 
         SequenceLayout pointsArrayMemoryLayout = MemoryLayout.sequenceLayout(10, pointsMemoryLayout);
 
-
-        List<VarHandle> varHandleList = buildVarHandle(pointsArray, pointsArrayMemoryLayout);
-
+//        SequenceLayout pointsArrayMemoryLayout = (SequenceLayout) buildMemoryLayout(pointsList);
 
         MethodHandle test_point = linker.downcallHandle(
                 symbolLookup.find("test_point_two").orElseThrow(),
@@ -214,6 +218,7 @@ public class TestNative {
                 pointArrayYVarHandler.set(segment, (long) i, (long) l, l);
             }
         }
+//        buildMemorySegment(pointsList, segment, pointsArrayMemoryLayout, pointsArrayMemoryLayout, new LinkedList<>(), new LinkedList<>());
         MemorySegment result = (MemorySegment) test_point.invoke(segment, pointsArrayMemoryLayout.elementCount());
         result = result.reinterpret(pointsArrayMemoryLayout.byteSize());
 
@@ -231,110 +236,5 @@ public class TestNative {
                 System.out.println(StringTemplate.STR. "J     Point \{ i }: x = \{ pointsX }, y = \{ pointsY }" );
             }
         }
-    }
-
-    public static void invoke(Object object) {
-        if (object instanceof Object[]) {
-            Object[] objects = (Object[]) object;
-            if (objects.length == 0) {
-                return;
-            }
-            object = objects[0];
-            Class<?> aClass = object.getClass();
-            Field[] declaredFields = aClass.getDeclaredFields();
-            for (Field declaredField : declaredFields) {
-
-            }
-
-        }
-        System.out.println(object);
-    }
-
-    public static MemoryLayout toValueLayout(Field field) {
-        Class<?> type = field.getType();
-        if (type == int.class || type == Integer.class) {
-            return JAVA_INT;
-        } else if (type == long.class || type == Long.class) {
-            return JAVA_LONG;
-        } else if (type == short.class || type == Short.class) {
-            return JAVA_SHORT;
-        } else if (type == byte.class || type == Byte.class) {
-            return JAVA_BYTE;
-        } else if (type == boolean.class || type == Boolean.class) {
-            return JAVA_BOOLEAN;
-        } else if (type == char.class || type == Character.class) {
-            return JAVA_CHAR;
-        } else if (type == float.class || type == Float.class) {
-            return JAVA_FLOAT;
-        } else if (type == double.class || type == Double.class) {
-            return JAVA_DOUBLE;
-        } else {
-            return ADDRESS;
-        }
-    }
-
-    public static boolean isBaseType(Class<?> type) {
-        return type == int.class || type == Integer.class
-                || type == long.class || type == Long.class
-                || type == short.class || type == Short.class
-                || type == byte.class || type == Byte.class
-                || (type == boolean.class || type == Boolean.class
-                || type == char.class || type == Character.class
-                || type == float.class || type == Float.class
-                || type == double.class || type == Double.class);
-    }
-
-
-    public static List<VarHandle> buildVarHandle(Object object, MemoryLayout memoryLayout) {
-        List<VarHandle> varHandleList = new LinkedList<>();
-        if (object instanceof Object[] objects) {
-            if (objects.length == 0) {
-                return new ArrayList<>();
-            }
-            object = objects[0];
-            Class<?> aClass = object.getClass();
-            Field[] declaredFields = aClass.getDeclaredFields();
-            for (Field declaredField : declaredFields) {
-                List<PathElement> pathElements = new LinkedList<>();
-                pathElements.add(PathElement.sequenceElement());
-                addVarHandle(declaredField, memoryLayout, pathElements, varHandleList);
-            }
-        } else {
-            Class<?> aClass = object.getClass();
-            Field[] declaredFields = aClass.getDeclaredFields();
-            for (Field declaredField : declaredFields) {
-                addVarHandle(declaredField, memoryLayout, new LinkedList<>(), varHandleList);
-            }
-        }
-        return varHandleList;
-    }
-
-    public static List<PathElement> addVarHandle(Field field, MemoryLayout memoryLayout, List<PathElement> pathElements, List<VarHandle> varHandleList) {
-        Class<?> fieldType = field.getType();
-        if (fieldType.isArray()) {
-            String name = field.getName();
-            pathElements.add(PathElement.groupElement(name));
-            pathElements.add(PathElement.sequenceElement());
-            Class<?> componentType = fieldType.getComponentType();
-            Field[] declaredFields = componentType.getDeclaredFields();
-            for (Field declaredField : declaredFields) {
-                addVarHandle(declaredField, memoryLayout, pathElements, varHandleList);
-            }
-            pathElements.removeLast();
-        } else {
-            String name = field.getName();
-            pathElements.add(PathElement.groupElement(name));
-            if (!isBaseType(fieldType)) {
-                for (Field declaredField : fieldType.getDeclaredFields()) {
-                    addVarHandle(declaredField, memoryLayout, pathElements, varHandleList);
-                }
-                pathElements.removeLast();
-            } else {
-                varHandleList.add(memoryLayout.varHandle(pathElements.toArray(new PathElement[0])));
-                pathElements.removeLast();
-            }
-
-        }
-        return pathElements;
     }
 }
